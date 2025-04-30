@@ -11,7 +11,7 @@ from numpy.fft import fftn, ifftn
 from scipy.linalg import svdvals
 from scipy.optimize import fmin
 from scipy.signal import convolve
-from unwrap import unwrap
+from skimage.restoration import unwrap_phase
 
 from pipeline.constants import DirectoryStructure as ds, FileNames as fn
 from pipeline.logger import log
@@ -298,7 +298,7 @@ def unswap(psi: np.ndarray, te: np.array, options: Dict) -> np.ndarray:
     for k in range(np.size(swap)):
         b0 = b0 / swap[k]
         if np.ndim(b0) in [2, 3]:
-            b0 = unwrap(b0, False, False, False)
+            b0 = unwrap_phase(b0, [False, False, False])
         b0 = b0 * swap[k]
 
     # remove gross aliasing (cosmetic)
