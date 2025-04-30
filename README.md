@@ -4,21 +4,25 @@ Please cite the following work if you use the software provided here in your res
 - Yiu, L., Basty, N., Whitcher, B., Bell, J.D., Sorokin, E., van Bruggen, N., Thomas, E.L., Cule, M.  Genetic 
 architecture of 11 abdominal organ traits derived from abdominal MRI using deep learning, 2021, _eLife_, **10**, [DOI: 10.7554/eLife.65554][elife].
 
+### Installation: UPDATED
+Clone the git repo
+```
+git clone git@github.com:FrancisCrickInstitute/recoh-mri-pipeline.git
+cd recoh-mri-pipeline
+```
+Create a conda environment using the following
+```
+conda create -f environment.yml
+```
+After creating the environment, activate it and install the setup script
+```
+conda activate recoh-pipeline
+python setup.py develop
+```
+
 ## Installation
 
 Execute `git-lfs checkout` in the directory containing the `git clone` output to download the deep learning models and reference data.  We recommend creating a virtual environment in order to run the code 
-
-```
-# deactivate
-# rm -rf ~/.venv/pipeline
-python3 -m venv ~/.venv/pipeline
-source ~/.venv/pipeline/bin/activate
-pip install pip setuptools wheel
-pip install --upgrade pip setuptools wheel cffi numpy
-cd ~/pipeline
-pip install -r requirements.txt
-python setup.py develop
-```
 
 The pipeline has been successfully built on Ubuntu 18.04 (Python 3.6) and MacOS 10.14 (Python 3.7). It does depend on 
 TensorFlow 1.13.1, which is compatible with 3.3 &leq; Python &leq; 3.7.
