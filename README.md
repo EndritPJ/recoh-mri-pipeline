@@ -7,7 +7,7 @@ architecture of 11 abdominal organ traits derived from abdominal MRI using deep 
 ### Installation: UPDATED
 Clone the git repo
 ```
-git clone git@github.com:FrancisCrickInstitute/recoh-mri-pipeline.git
+git clone git@github.com:EndritPJ/recoh-mri-pipeline.git
 cd recoh-mri-pipeline
 ```
 Create a conda environment using the following
