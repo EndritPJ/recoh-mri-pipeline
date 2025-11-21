@@ -8,14 +8,12 @@ from pipeline.correct import bias_field_correction
 from pipeline.logger import log
 from pipeline.nifti_series import load_dixon_series, resample_series_y, resample_series_z, blend_series_by_channel, \
     save_dixon_volumes, create_mask_by_series
-from pipeline.swaps import swap_detection, any_swaps, fix_fat_water_swaps
+
 
 
 def assemble_and_correct_series(skip_bias_correction: bool = False, skip_swap_correction: bool = False) -> None:
     log.info('Assemble and correct NIfTI series')
     series_data = load_dixon_series(ds.tmp_nifti_series.value)
-    if not skip_swap_correction:
-        swaps_detected = swap_detection(series_data)
     resample_series_y(series_data)
     resample_series_z(series_data)
     create_mask_by_series(series_data)
@@ -24,6 +22,8 @@ def assemble_and_correct_series(skip_bias_correction: bool = False, skip_swap_co
     save_dixon_volumes(blended_volumes, processed=False)
 
     if not skip_swap_correction:
+        from pipeline.swaps import swap_detection, any_swaps, fix_fat_water_swaps
+        swaps_detected = swap_detection(series_data)
         if any_swaps(swaps_detected):
             log.info('Swaps detected, attempting to correct')
             series_data = fix_fat_water_swaps(series_data, swaps_detected)
@@ -31,9 +31,11 @@ def assemble_and_correct_series(skip_bias_correction: bool = False, skip_swap_co
             log.info('No swaps detected')
 
     if skip_bias_correction:
+        # need to blend volumes again since swap may have changed data
         if not skip_swap_correction:
             blended_volumes = blend_series_by_channel(series_data)
-    else:
+
+    if not skip_bias_correction:
         log.info('Estimate and correct bias field for NIfTI series')
         bias_field_correction(series_data)
         blended_volumes = blend_series_by_channel(series_data)
