@@ -9,6 +9,10 @@ from pipeline.logger import log
 from pipeline.nifti_series import add_series_to_dict, replace_nii_img_dataobj
 from pipeline.util import nibabel_to_sitk, sitk_to_nibabel, channel_to_str
 
+import os
+from datetime import datetime
+from pipeline.constants import DirectoryStructure as ds, NIFTI_EXT
+
 
 def estimate_bias_field(input_volume: NiftiWrapper, mask_volume: NiftiWrapper, fwhm: float = 0.15,
                         iterations: Tuple[int, int, int, int] = (50, 50, 50, 50)) -> (np.ndarray, np.ndarray):
@@ -58,6 +62,17 @@ def bias_field_correction(series_data: Dict, fwhm: float = 0.15, iterations: Tup
         n4bias_series[location] = field
         series_data = add_series_to_dict(replace_nii_img_dataobj(vol, corrected.astype('uint16')),
                                          series_data, dc.in_phase, location)
+        # saving the bias field
+        if not ds.analysis.exists():
+            os.makedirs(ds.analysis.value, exist_ok=True)
+        # filename: bias_{utc-timestamp}.nii.gz
+        label = 'blended' if float(location) == 0.0 else ""
+        ts = datetime.utcnow().strftime('%Y%m%dT%H%M%S')
+        fname = f"bias_{label}_{ts}.{NIFTI_EXT}"
+        outpath = ds.analysis.path(fname)
+        # write a NIfTI using the existing helper so affine/header are preserved
+        bias_wrapper = replace_nii_img_dataobj(vol, field.astype('float32'))
+        bias_wrapper.to_filename(outpath)
 
     for channel in [dc.opp_phase, dc.water, dc.fat]:
         for location, vol in series_data[channel].items():
