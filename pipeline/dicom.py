@@ -51,11 +51,10 @@ def unzip_dicom_data(dicom_directory: str) -> (str, str, bool):
     if dicom_directory.endswith('zip'):
         biobank_id = os.path.basename(dicom_directory).split('_')[0]
         temp_directory = tempfile.mkdtemp()
-        for zip_file in glob.glob(os.path.join(os.path.dirname(dicom_directory), '{}*.zip'.format(biobank_id))):
-            extract_directory = os.path.join(temp_directory, os.path.basename(zip_file).replace('.zip', ''))
-            log.info('Unzipping {} into {}'.format(os.path.basename(zip_file), extract_directory))
-            with zipfile.ZipFile(zip_file, 'r') as zip_ref:
-                zip_ref.extractall(extract_directory)
+        extract_directory = os.path.join(temp_directory, os.path.basename(dicom_directory).replace('.zip', ''))
+        log.info('Unzipping {} into {}'.format(os.path.basename(dicom_directory), extract_directory))
+        with zipfile.ZipFile(dicom_directory, 'r') as zip_ref:
+            zip_ref.extractall(extract_directory)
         return temp_directory, biobank_id, True
 
     return dicom_directory, '', False
@@ -247,3 +246,4 @@ def dicom_to_nifti(dicom_directory: str, nifti_directory: str, biobank_project: 
         shutil.rmtree(dicom_directory, ignore_errors=True)
 
     return dicom_id, biobank_id
+
