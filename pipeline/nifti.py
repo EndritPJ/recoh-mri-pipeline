@@ -40,6 +40,8 @@ def assemble_and_correct_series(skip_bias_correction: bool = False, skip_swap_co
         log.info('Estimate and correct bias field for NIfTI series')
         bias_field_correction(series_data)
         blended_volumes = blend_series_by_channel(series_data)
+        # save blended volumes after per-series bias-field correction
+        save_dixon_volumes(blended_volumes, True, "post_first_correction")
         log.info('Estimate and correct bias field for blended volumes')
         bias_field_correction(blended_volumes)
 

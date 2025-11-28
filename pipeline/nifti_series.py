@@ -226,7 +226,7 @@ def load_dixon_series(input_directory: str) -> Dict:
     return series_data
 
 
-def save_dixon_volumes(volumes: Dict, processed: bool = True) -> None:
+def save_dixon_volumes(volumes: Dict, processed: bool = True, correction_step="") -> None:
     for channel, volume in volumes.items():
         if len(volume) != 1:
             log.error('Expected single blended volume, there are {} instead of {}'.format(len(volume), volume))
@@ -247,6 +247,8 @@ def save_dixon_volumes(volumes: Dict, processed: bool = True) -> None:
             file_name = ds.tmp_unprocessed.path('{}.{}'.format(channel_name, NIFTI_EXT))
             plots_path = ds.tmp_plots.path
         log.info('Channel = {}'.format(channel_name))
+        if(correction_step != ""):
+            file_name = ds.nifti.path('{}_{}.{}'.format(channel_name, correction_step, NIFTI_EXT))
         volume.to_filename(file_name)
         if dc.mask in volumes.keys():
             mask_view = coronal_view(volume.nii_img)

@@ -61,6 +61,7 @@ def unzip_dicom_data(dicom_directory: str) -> (str, str, bool):
 
 
 def organize_dicom_files(input_directory: str, output_directory: str, biobank_project: Union[str, None]) -> (str, str):
+    log.info('Organizing files for input directory: {}'.format(input_directory))
     input_directory, bid, zip_data = unzip_dicom_data(input_directory)
     biobank_id = ''
     if biobank_project:
