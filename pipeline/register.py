@@ -92,8 +92,18 @@ def atlas_landmarks(reference_directory: str, n_images: int = 35) -> None:
     # for moving_subject in reference_scans:
     #     warp_landmarks(dicom_id, reference_directory, fixed_img_name, moving_subject)
 
-    cpu_used = cpu_count() * 2 // 3
-    chunk_size = round(n_images / cpu_used)
+    # Respect SLURM resource limits if running in a job
+    slurm_cpus = os.environ.get('SLURM_CPUS_PER_TASK')
+    slurm_ntasks = os.environ.get('SLURM_NTASKS')
+    
+    if slurm_cpus:
+        cpu_used = int(slurm_cpus)
+    elif slurm_ntasks:
+        cpu_used = int(slurm_ntasks)
+    else:
+        cpu_used = max(1, cpu_count() * 2 // 3)
+    
+    chunk_size = max(1, round(n_images / cpu_used))
     log.debug(f'{cpu_used} CPUs allocated and chunksize = {chunk_size:d}')
     warp_landmarks_partial = partial(warp_landmarks, dicom_id, reference_directory, fixed_img_name)
     with get_context('spawn').Pool(processes=cpu_used) as pool:  # with Pool(processes=cpu_used) as pool:

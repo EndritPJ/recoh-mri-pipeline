@@ -4,6 +4,7 @@ import os
 from typing import List, Union, Dict
 
 import numpy as np
+import tensorflow as tf
 from keras.engine.saving import load_model
 
 from pipeline.constants import DataChannel as dc, DirectoryStructure as ds
@@ -23,6 +24,30 @@ SERIES_DIM = {
 }
 
 
+def _cleanup_tf_resources(model_dict: dict) -> None:
+    """
+    Clean up TensorFlow/Keras resources after swap detection to prevent GPU memory accumulation.
+    This is critical for multi-subject processing on HPC clusters.
+    """
+    try:
+        # Delete all models to free GPU memory
+        for model in model_dict.values():
+            del model
+        model_dict.clear()
+        
+        # Clear Keras session and TensorFlow graph
+        from keras.backend import clear_session
+        clear_session()
+        
+        # Force garbage collection
+        import gc
+        gc.collect()
+        
+        log.debug('TensorFlow resources cleaned up successfully')
+    except Exception as e:
+        log.warning(f'Error during TensorFlow cleanup: {str(e)}')
+
+
 def swap_detection(series_data: Dict) -> Dict:
     model_dict = {
         'c1': load_model(os.path.join(MODELS_DIRECTORY, 'classify_series_1.h5')),
@@ -35,46 +60,50 @@ def swap_detection(series_data: Dict) -> Dict:
         'c6_2': load_model(os.path.join(MODELS_DIRECTORY, 'classify_series_6_R.h5'))
     }
 
-    swap_detected = dict()
-    metadata = dict()
-    if ds.summary.exists('metadata.json'):
-        with open(ds.summary.path('metadata.json'), 'r') as jsonfile:
-            metadata = json.load(jsonfile)
-    metadata['swap_correction'] = None
+    try:
+        swap_detected = dict()
+        metadata = dict()
+        if ds.summary.exists('metadata.json'):
+            with open(ds.summary.path('metadata.json'), 'r') as jsonfile:
+                metadata = json.load(jsonfile)
+        metadata['swap_correction'] = None
 
-    log.info('Swap detection using neural networks')
-    fat_data = series_data[dc.fat]
-    water_data = series_data[dc.water]
-    sorted_keys = sorted(fat_data.keys(), reverse=True)
+        log.info('Swap detection using neural networks')
+        fat_data = series_data[dc.fat]
+        water_data = series_data[dc.water]
+        sorted_keys = sorted(fat_data.keys(), reverse=True)
 
-    for i in range(min(len(sorted_keys), 5)):
-        water_tf, fat_tf = preprocess_swaps(i + 1, SERIES_DIM[str(i + 1)], sorted_keys, water_data, fat_data)
-        fat_water_array = np.zeros([[water_tf.shape[0]][0], [water_tf.shape[1]][0], [water_tf.shape[2]][0], 2])
+        for i in range(min(len(sorted_keys), 5)):
+            water_tf, fat_tf = preprocess_swaps(i + 1, SERIES_DIM[str(i + 1)], sorted_keys, water_data, fat_data)
+            fat_water_array = np.zeros([[water_tf.shape[0]][0], [water_tf.shape[1]][0], [water_tf.shape[2]][0], 2])
 
-        # fat_water_array has fat in channel 0 and water in channel 1.
-        # accordingly, fat has label 0 and water has label 1.
-        fat_water_array[:, :, :, 0] = fat_tf[:, :, :, 0]
-        fat_water_array[:, :, :, 1] = water_tf[:, :, :, 0]
-        swap_detected[sorted_keys[i]] = predict_swaps(fat_water_array, model_dict, i + 1)
-    # Series 6
-    if len(sorted_keys) >= 6:
-        water_tf, fat_tf = preprocess_swaps(6, SERIES_DIM['6'], sorted_keys, water_data, fat_data)
+            # fat_water_array has fat in channel 0 and water in channel 1.
+            # accordingly, fat has label 0 and water has label 1.
+            fat_water_array[:, :, :, 0] = fat_tf[:, :, :, 0]
+            fat_water_array[:, :, :, 1] = water_tf[:, :, :, 0]
+            swap_detected[sorted_keys[i]] = predict_swaps(fat_water_array, model_dict, i + 1)
+        # Series 6
+        if len(sorted_keys) >= 6:
+            water_tf, fat_tf = preprocess_swaps(6, SERIES_DIM['6'], sorted_keys, water_data, fat_data)
 
-        fat_water_array = np.zeros([[water_tf.shape[0]][0], [water_tf.shape[1]][0], [water_tf.shape[2]][0], 2])
-        fat_water_array[:, :, :, 0] = fat_tf[:, :, :, 0]
-        fat_water_array[:, :, :, 1] = water_tf[:, :, :, 0]
+            fat_water_array = np.zeros([[water_tf.shape[0]][0], [water_tf.shape[1]][0], [water_tf.shape[2]][0], 2])
+            fat_water_array[:, :, :, 0] = fat_tf[:, :, :, 0]
+            fat_water_array[:, :, :, 1] = water_tf[:, :, :, 0]
 
-        swap_detected[sorted_keys[5]] = predict_swaps(fat_water_array, model_dict, 6)
-    else:
-        log.warning('Series 6 is not present, skipping')
+            swap_detected[sorted_keys[5]] = predict_swaps(fat_water_array, model_dict, 6)
+        else:
+            log.warning('Series 6 is not present, skipping')
 
-    metadata['swap_detected'] = swap_detected
-    if not ds.summary.exists():
-        os.mkdir(ds.summary.value)
-    with open(ds.summary.path('metadata.json'), 'w') as jsonfile:
-        json.dump(metadata, jsonfile, sort_keys=True, indent=4, ensure_ascii=False)
+        metadata['swap_detected'] = swap_detected
+        if not ds.summary.exists():
+            os.mkdir(ds.summary.value)
+        with open(ds.summary.path('metadata.json'), 'w') as jsonfile:
+            json.dump(metadata, jsonfile, sort_keys=True, indent=4, ensure_ascii=False)
 
-    return swap_detected
+        return swap_detected
+    finally:
+        # Clean up TensorFlow resources to prevent memory accumulation in multi-subject mode
+        _cleanup_tf_resources(model_dict)
 
 
 def normalize(img: np.ndarray) -> np.ndarray:
