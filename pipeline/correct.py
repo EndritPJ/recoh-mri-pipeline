@@ -22,8 +22,6 @@ def estimate_bias_field(input_volume: NiftiWrapper, mask_volume: NiftiWrapper, f
     mask_volume_shrink = sitk.Shrink(sitk_mask_volume, [2] * sitk_mask_volume.GetDimension())
     
     n4 = sitk.N4BiasFieldCorrectionImageFilter()
-    log.debug(f"Global default number of threads: {sitk.ProcessObject.GetGlobalDefaultNumberOfThreads()}")
-    log.debug(f"N4 bias field number of threads, default: {n4.GetNumberOfThreads()}")
     n4.SetMaximumNumberOfIterations(iterations)
     corrected_shrunk = n4.Execute(sitk.Cast(input_volume_shrink, sitk.sitkFloat32),
                                sitk.Cast(mask_volume_shrink, sitk.sitkUInt8))
@@ -33,9 +31,7 @@ def estimate_bias_field(input_volume: NiftiWrapper, mask_volume: NiftiWrapper, f
     bias_field_array = np.asanyarray(sitk_to_nibabel(bias_field).dataobj)
     
     return bias_field_array, corrected
-    # log.debug(f"Global default number of threads: {sitk.ProcessObject.GetGlobalDefaultNumberOfThreads()}")
     # n4 = sitk.N4BiasFieldCorrectionImageFilter()
-    # log.debug(f"N4 bias field number of threads, default: {n4.GetNumberOfThreads()}")
     # n4.SetBiasFieldFullWidthAtHalfMaximum(fwhm)  # default = 0.15
     # n4.SetMaximumNumberOfIterations(iterations)  # default = 50 x 50 x 50 x 50
 
