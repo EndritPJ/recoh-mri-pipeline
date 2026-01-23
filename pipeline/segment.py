@@ -29,6 +29,8 @@ def create_body_mask(n_otsu: int = 4, processed: bool = True) -> None:
     vol_water = sitk.ReadImage(dir.path(fn.water.value))
     vol_fat_percent = sitk.Threshold(sitk.Mask(vol_fat / (vol_fat + vol_water), vol_ip_otsu))
     vol_water_percent = sitk.Threshold(sitk.Mask(vol_water / (vol_fat + vol_water), vol_ip_otsu))
+    vol_fat_percent_uint16 = sitk.Cast(vol_fat_percent * 65535.0, sitk.sitkUInt16)
+    vol_water_percent_uint16 = sitk.Cast(vol_water_percent * 65535.0, sitk.sitkUInt16)
 
     log.info('Creating binary mask for the whole body')
     vol_ip_percent = sitk.Mask(vol_fat_percent + vol_water_percent, vol_mask_initial)
@@ -57,8 +59,8 @@ def create_body_mask(n_otsu: int = 4, processed: bool = True) -> None:
         if not os.path.exists(ds.analysis.value):
             os.makedirs(ds.analysis.value)
     dir = ds.analysis if processed else ds.tmp_unprocessed
-    sitk.WriteImage(vol_fat_percent, dir.path(fn.fat_percent.value))
-    sitk.WriteImage(vol_water_percent, dir.path(fn.water_percent.value))
+    sitk.WriteImage(vol_fat_percent_uint16, dir.path(fn.fat_percent.value))
+    sitk.WriteImage(vol_water_percent_uint16, dir.path(fn.water_percent.value))
     sitk.WriteImage(vol_mask, dir.path(fn.body_mask.value))
 
 
