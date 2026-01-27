@@ -31,7 +31,7 @@ class Pipeline(object):
         self.bone_joints = BoneJoints()
 
     def process(self, input_directory: str, output_directory: str, biobank_project: str,
-                skip_bias_correction: bool = False, skip_swap_correction: bool = False, lite=False, multi=False) -> None:
+                skip_bias_correction: bool = False, skip_swap_correction: bool = False) -> None:
         """
         Process UK Biobank DICOM data from the abdominal MRI acquisition protocol.
         :param input_directory: Full path to the directory of DICOM data, can be multi subject.
@@ -44,33 +44,6 @@ class Pipeline(object):
         profile.start()
         input_directory = os.path.realpath(input_directory)
         output_directory = os.path.realpath(output_directory)
-        if not multi:
-            self.processing_steps(input_directory, output_directory, biobank_project, skip_bias_correction,
-                             skip_swap_correction, lite)
-        if multi:
-            if not os.path.exists(output_directory):
-                os.makedirs(output_directory)
-            for file in os.listdir(input_directory):
-                new_input_directory = os.path.join(input_directory, file)
-                new_output_directory = os.path.join(output_directory, os.path.splitext(file)[0])
-                if os.path.exists(new_output_directory) or ".zip" not in file:
-                    continue
-                self.processing_steps(new_input_directory, new_output_directory, biobank_project, skip_bias_correction,
-                            skip_swap_correction, lite)
-        # if lite:
-        #     # clean up temp directory
-        #     if ds.tmp.exists():
-        #         shutil.rmtree(ds.tmp.value)
-        profile.stop()
-        print(profile.output_text(unicode=True, color=True))
-
-    def processing_steps(self, input_directory: str, output_directory: str, biobank_project: str,
-                skip_bias_correction: bool = False, skip_swap_correction: bool = False, lite=False) -> None:
-        '''
-        Individual processing steps.
-        :param input_directory: Full path to the directory of DICOM data, single subject only.
-        :param output_directory: Full path for the single-subject processed data to be written.
-        '''
         if biobank_project:
             biobank_project = f'{biobank_project:>05}'
         self.dicom.organize(input_directory, output_directory, biobank_project)
@@ -82,18 +55,22 @@ class Pipeline(object):
         os.chdir(os.path.join(output_directory, dicom_id))
         self.nifti.assemble(ds.root.value, skip_bias_correction, skip_swap_correction)
         self.metadata.generate(ds.root.value)
-        if not lite:
-            self.segment.body_mask(ds.root.value, biobank=biobank_project)
-            self.segment.left_right_mask(ds.root.value)
-            self.qc.anomaly_detection(ds.root.value)
-            self.bone_joints.predict(ds.root.value)
-            self.nifti.copy_liver_and_pancreas(ds.root.value)
-            self.multiecho.pdff(ds.root.value, 'multiecho_liver')
-            self.multiecho.pdff(ds.root.value, 'multiecho_pancreas')
-            self.multiecho.pdff(ds.root.value, 'ideal_liver')
-            self.multiecho.iron(ds.root.value, 'multiecho_liver')
-            self.multiecho.iron(ds.root.value, 'multiecho_pancreas')
-            self.multiecho.iron(ds.root.value, 'ideal_liver')
+        self.segment.body_mask(ds.root.value, biobank=biobank_project)
+        self.segment.left_right_mask(ds.root.value)
+        self.qc.anomaly_detection(ds.root.value)
+        self.bone_joints.predict(ds.root.value)
+        # self.nifti.copy_liver_and_pancreas(ds.root.value)
+        # self.multiecho.pdff(ds.root.value, 'multiecho_liver')
+        # self.multiecho.pdff(ds.root.value, 'multiecho_pancreas')
+        # self.multiecho.pdff(ds.root.value, 'ideal_liver')
+        # self.multiecho.iron(ds.root.value, 'multiecho_liver')
+        # self.multiecho.iron(ds.root.value, 'multiecho_pancreas')
+        # self.multiecho.iron(ds.root.value, 'ideal_liver')
+        # clean up tmp/ directory
+        if ds.tmp.exists():
+            shutil.rmtree(ds.tmp.value)
+        profile.stop()
+        print(profile.output_text(unicode=True, color=True))
 
 
 def main():
