@@ -40,8 +40,8 @@ class Pipeline(object):
         :param skip_bias_correction: Skip bias field correction (default = False).
         :param skip_swap_correction: Skip fat-water swap correction (default = False).
         """
-        profile = Profiler()
-        profile.start()
+        # profile = Profiler()
+        # profile.start()
         input_directory = os.path.realpath(input_directory)
         output_directory = os.path.realpath(output_directory)
         if biobank_project:
@@ -69,8 +69,8 @@ class Pipeline(object):
         # clean up tmp/ directory
         if ds.tmp.exists():
             shutil.rmtree(ds.tmp.value)
-        profile.stop()
-        print(profile.output_text(unicode=True, color=True))
+        # profile.stop()
+        # print(profile.output_text(unicode=True, color=True))
 
 
 def main():
